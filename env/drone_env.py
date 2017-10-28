@@ -33,6 +33,7 @@ class env():
         def _render(self, mode, close):
             # Possilbly not useful
             # Way to record the image or video may be directly in the api
+            # When getting the video, considering the pause of picking action
 
         # Keys to actions, to explain the meaning for actions
 
