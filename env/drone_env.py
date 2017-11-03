@@ -60,7 +60,7 @@ class drone_env():
                  2: [self.crt_x, self.crt_y - self.step_size, self.crt_z, self.step_velocity],
                  3: [self.crt_x, self.crt_y + self.step_size, self.crt_z, self.step_velocity],
                  4: [self.crt_x + self.step_size, self.crt_y, self.crt_z, self.step_velocity],
-                 5: [self.crt_x - self.step_size-math.pi / 6.0, self.crt_y, self.crt_z, self.step_velocity],
+                 5: [self.crt_x - self.step_size, self.crt_y, self.crt_z, self.step_velocity],
                  }
 
         if a >= 0 and a <= 5:
