@@ -1,13 +1,19 @@
 
 # to ram?
+import time
 from AirSimClient import *
 import matplotlib.image as mpimg
 import numpy as np
 import math
+from set_foreground import *
+from pymouse import PyMouse
+from pykeyboard import PyKeyboard
+
 class drone_env():
     # https://github.com/openai/gym/blob/master/gym/envs/atari/atari_env.py
     # https://gym.openai.com/docs/
     def __init__(self, tolerance, step_size, step_velocity, client):
+        self.duration = step_size / step_velocity + 1
         self.client = client
 		# tolerance: the radius of the destination circle
         self.tolerance = tolerance
@@ -15,7 +21,8 @@ class drone_env():
         self.des_x = 0
         self.des_y = 0
         self.des_z = 0
-
+        self.place_goal()
+        
         self.crt_x = 0
         self.crt_y = 0
         self.crt_z = 0
@@ -55,22 +62,27 @@ class drone_env():
         #  8: Land
         #  9: Takeoff}
 
-        dict = { 0: [self.crt_x, self.crt_y, self.crt_z - self.step_size, self.step_velocity],
-                 1: [self.crt_x, self.crt_y, self.crt_z + self.step_size, self.step_velocity],
-                 2: [self.crt_x, self.crt_y - self.step_size, self.crt_z, self.step_velocity],
-                 3: [self.crt_x, self.crt_y + self.step_size, self.crt_z, self.step_velocity],
-                 4: [self.crt_x + self.step_size, self.crt_y, self.crt_z, self.step_velocity],
-                 5: [self.crt_x - self.step_size, self.crt_y, self.crt_z, self.step_velocity],
+        dict = { 0: [                    0,                    0,  - self.step_velocity, self.step_size],
+                 1: [                    0,                    0,  + self.step_velocity, self.step_size],
+                 2: [                    0, - self.step_velocity,                     0, self.step_size],
+                 3: [                    0, + self.step_velocity,                     0, self.step_size],
+                 4: [ + self.step_velocity,                    0,                     0, self.step_size],
+                 5: [ - self.step_velocity,                    0,                     0, self.step_size],
                  }
 
         if a >= 0 and a <= 5:
-            self.client.moveToPosition(dict[a][0], dict[a][1], dict[a][2], dict[a][3])
+            self.client.moveByVelocity(dict[a][0], dict[a][1], dict[a][2], dict[a][3] / self.step_velocity)
+            time.sleep(self.duration)
         elif a == 6:
             self.crt_angle -= math.pi / 6.0
             self.client.moveByAngle(0, 0, self.crt_z, self.crt_angle, 1) ## only given pitch angle
+            time.sleep(self.duration)
+            
         elif a == 7:
             self.crt_angle += math.pi / 6.0
             self.client.moveByAngle(0, 0, self.crt_z, self.crt_angle, 1)
+            time.sleep(self.duration)
+            
         elif a == 8:
             self.client.land()
         else:
@@ -80,6 +92,9 @@ class drone_env():
         self.crt_x = a.x_val
         self.crt_y = a.y_val
         self.crt_z = a.z_val
+        b = self.get_orientation()
+        self.crt_angle = b[2]
+        
 
         boolean_collision = self.whether_collition()
 
@@ -93,7 +108,13 @@ class drone_env():
         # self.step_size = step_size
         # self.step_velocity = step_velocity
 
-        return [images_got, self.crt_x, self.crt_y, self.crt_z, boolean_collision, boolean_arrive]
+        reward = 0
+        if boolean_arrive:
+            reward = 100
+        if boolean_collision:
+            reward = -100
+            
+        return [images_got, self.crt_x, self.crt_y, self.crt_z, self.crt_angle, boolean_collision, boolean_arrive, reward]
 
 
     def get_image(self):
@@ -105,7 +126,7 @@ class drone_env():
 
         images = []
         for idx, response in enumerate(responses):
-            filename = '/home/zeyuan/AirSim/HelloDrone/pic_taken_by_camera/' + str(self.image_index)+ str(idx)
+            filename = 'c:/pic_taken_by_camera/' + str(self.image_index)+ str(idx)
 
             if response.pixels_as_float:
                 print("Type %d, size %d" % (response.image_type, len(response.image_data_float)))
@@ -128,6 +149,9 @@ class drone_env():
     def get_position(self):
         # get current position of drone
         return self.client.getPosition()
+    
+    def get_orientation(self):
+        return self.client.toEulerianAngle(self.client.getOrientation())
 
     def whether_collition(self):
         return self.client.getCollisionInfo().has_collided
@@ -143,8 +167,30 @@ class drone_env():
         self.step_size = step_size
         self.step_velocity = step_velocity
         self.tolerance = tolerance
-        self.step(9)
+    
+    def place_goal(self):
+        w = WindowMgr()
+        w.find_window_wildcard(".*Blocks Environment for AirSim Blocks Environment for AirSim*")
+        #w.find_window_wildcard(".*Unreal Engine*")
+        m = PyMouse()
+        k = PyKeyboard()
+        w.set_foreground()
+        x_dim, y_dim = m.screen_size()
+        #m.click(x_dim/2, y_dim/2, 1)
+        k.type_string('q')
+        print("place view point")
 
+        time.sleep(1)
+        file = open(r'''C:\Users\zeyua\Source\Repos\AirSim\Unreal\Environments\Blocks\Saved\StagedBuilds\WindowsNoEditor\Blocks\Spawn_Location.txt''',"r")
+        des_string = file.readline()
+        file.close()
+        array = des_string.replace("="," ").split()
+        print(array)
+        self.des_x = float(array[1]) / 100 + 2
+        self.des_y = float(array[3]) / 100 + 2
+        self.des_z = float(array[5]) / (-100)
+        print("destination: x,y,z =",self.des_x,self.des_y,self.des_z)
+        
     def reset(self):
         self.client.reset()
         a = self.get_position()
@@ -152,4 +198,4 @@ class drone_env():
         self.crt_y = a.y_val
         self.crt_z = a.z_val
         self.image_index = 0
-        self.step(9)
+        
