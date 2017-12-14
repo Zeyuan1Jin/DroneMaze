@@ -154,15 +154,16 @@ class simplified_drone_env():
         self.crt_y = 0
         self.crt_z = 0
         self.crt_angle = 0
+        return [self.crt_x, self.crt_y, self.crt_angle]
 
-    def reset(self, tolerance, step_size):
-        self.crt_x = 0
-        self.crt_y = 0
-        self.crt_z = 0
-        self.crt_angle = 0
-
-        self.step_size = step_size
-        self.tolerance = tolerance
+    # def reset(self, tolerance, step_size):
+    #     self.crt_x = 0
+    #     self.crt_y = 0
+    #     self.crt_z = 0
+    #     self.crt_angle = 0
+    #
+    #     self.step_size = step_size
+    #     self.tolerance = tolerance
 
     def place_goal(self):
 
